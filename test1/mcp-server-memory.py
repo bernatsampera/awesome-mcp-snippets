@@ -4,7 +4,7 @@ import anyio
 
 mcp = FastMCP("memory-crud")
 
-DB_FILE = "db/memory.db"
+DB_FILE = "../db/memory.db"
 
 
 async def init_db():

@@ -6,7 +6,7 @@ from typing import Optional, List
 
 mcp = FastMCP("blog-posts")
 
-DB_FILE = "db/content.db"
+DB_FILE = "../db/content.db"
 
 
 async def init_db():
@@ -33,20 +33,20 @@ async def init_db():
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_posts_pub_date ON posts(pub_date)"
         )
-        await db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug)"
-        )
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug)")
         await db.commit()
 
 
 def _format_post_row(row: tuple) -> str:
     id_, title, author, pub_date, slug, tags = row
     tags_display = tags if tags is not None else ""
-    return f"{id_} | {pub_date} | {title} by {author} | slug={slug} | tags={tags_display}"
+    return (
+        f"{id_} | {pub_date} | {title} by {author} | slug={slug} | tags={tags_display}"
+    )
 
 
 @mcp.tool()
-async def list_posts(limit: Optional[int] = None, order: str = "desc") -> List[str]:
+async def list_posts(limit: Optional[int] = None, order: str = "desc") -> str:
     """List all blog posts with basic metadata.
 
     Args:
@@ -81,7 +81,7 @@ async def filter_posts(
     search: Optional[str] = None,
     order: str = "desc",
     limit: Optional[int] = None,
-) -> List[str]:
+) -> str:
     """List blog posts matching filters.
 
     Args:
@@ -119,9 +119,7 @@ async def filter_posts(
         params.append(until)
 
     if search:
-        where.append(
-            "(title LIKE ? OR description LIKE ? OR content LIKE ?)"
-        )
+        where.append("(title LIKE ? OR description LIKE ? OR content LIKE ?)")
         like = f"%{search}%"
         params.extend([like, like, like])
 
@@ -138,7 +136,7 @@ async def filter_posts(
         cursor = await db.execute(query, params)
         rows = await cursor.fetchall()
 
-    return [_format_post_row(r) for r in rows]
+    return [_format_post_row(r) for r in rows].join("\n")
 
 
 async def run():
@@ -148,4 +146,3 @@ async def run():
 
 if __name__ == "__main__":
     anyio.run(run)
-
