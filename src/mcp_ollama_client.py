@@ -2,59 +2,96 @@ import os
 import asyncio
 from typing import Dict
 import json
+from typing_extensions import Union
 from langchain_ollama import ChatOllama
 from mcp.client.streamable_http import streamablehttp_client
 from mcp import ClientSession
+from pydantic import BaseModel
 
 
+# LLM Instance with json format because the MCP server returns json
 llm = ChatOllama(model="llama3.1:latest", temperature=0, format="json")
+mcp_server_url = "http://127.0.0.1:8000/mcp"
 
 
-def choose_with_langchain(expression: str) -> Dict:
-    system = (
-        "You are a tool selector. Return ONLY JSON with keys 'name' and 'arguments'. "
-        "Allowed tools: "
-        "1. 'get_blog_posts'. 'arguments' MUST be {\"limit\": number}. "
-        "2. 'add_blog_post'. 'arguments' MUST be {'title': string, 'content': string}. "
-        "3. 'remove_blog_post'. 'arguments' MUST be {'id': number}. "
-        "Use numeric literals; do NOT return a JSON schema or descriptions."
-    )
-    print("expression", expression)
-    prompt = system + "\n\nInput: " + expression
-
-    return llm.invoke(prompt)
+# Define the possible argument schemas
+class GetBlogPostsArgs(BaseModel):
+    limit: int
 
 
-async def call_math_with_llm(expr: str, model_name: str) -> None:
-    choice = json.loads(choose_with_langchain(expr).content)
-    print("choice", choice)
+class AddBlogPostArgs(BaseModel):
+    title: str
+    content: str
 
-    async with streamablehttp_client("http://127.0.0.1:8000/mcp") as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.call_tool(
-                name=choice["name"], arguments=choice["arguments"]
-            )
-            text_blocks = [
-                b for b in result.content if getattr(b, "type", None) == "text"
-            ]
-            print(f"Input: {expr}")
-            print(f"Tool: {choice['name']}  Args: {choice['arguments']}")
-            if text_blocks:
-                print(f"Result: {text_blocks}")
-            else:
-                print(result.model_dump_json(indent=2))
+
+class RemoveBlogPostArgs(BaseModel):
+    id: int
+
+
+# Main tool response schema
+class ToolSelection(BaseModel):
+    name: str
+    arguments: Union[GetBlogPostsArgs, AddBlogPostArgs, RemoveBlogPostArgs]
+
+
+# Create structured LLM to return a json of the class ToolSelection
+structured_llm = llm.with_structured_output(ToolSelection)
+
+
+tool_chooser_prompt = """
+You are a tool selector. Choose the appropriate tool and provide the arguments.
+Allowed tools: 
+1. get_blog_posts
+    Arguments: limit (number) - optional (10 if not provided)
+2. add_blog_post
+    Arguments: title (string) - required and content (string) - required
+3. remove_blog_post
+    Arguments: id (number) - required
+"""
+
+
+# Create structured LLM to return a json of the class ToolSelection
+def tool_choser(expression: str) -> ToolSelection:
+    """Choose tool and return structured response with guaranteed valid JSON."""
+    return structured_llm.invoke(f"""
+    {tool_chooser_prompt}
+
+Input: {expression}""")
+
+
+# Call the selected tool with its arguments
+async def call_tool_with_llm(expr: str) -> None:
+    # Why model_dump? Because the MCP server returns a json of the class ToolSelection
+    tool = tool_choser(expr).model_dump()
+
+    # Open HTTP connection to MCP server and create client session (nested context managers)
+    async with (
+        streamablehttp_client(mcp_server_url) as (read, write, _),
+        ClientSession(read, write) as session,
+    ):
+        # Initialize the MCP session
+        await session.initialize()
+        # Call the selected tool with its arguments
+        result = await session.call_tool(tool["name"], tool["arguments"])
+
+        # Filter result content to find text blocks only
+        text_blocks = [b for b in result.content if getattr(b, "type", None) == "text"]
+
+        # Print input expression and tool info on separate lines
+        print(f"Input: {expr}\nTool: {tool['name']}  Args: {tool['arguments']}")
+        # Print text blocks if found, otherwise print full JSON result
+        print(
+            f"Result: {text_blocks}"
+            if text_blocks
+            else result.model_dump_json(indent=2)
+        )
 
 
 async def main():
-    model_name = os.getenv("OLLAMA_MODEL", "llama3.1:latest")
-
-    # await call_math_with_llm(
-    #     "add a blog post about the ww2, the title is 'World War 2' and the content is 'World War 2 was a global conflict that lasted from 1939 to 1945'",
-    #     model_name,
-    # )
-    # await call_math_with_llm("remove the blog post with id 1", model_name)
-    await call_math_with_llm("list the blog posts", model_name)
+    # user_input = "add a blog post about the ww2, the title is 'World War 2' and the content is 'World War 2 was a global conflict that lasted from 1939 to 1945'"
+    user_input = "list blog posts"
+    # user_input = "remove the blog post with id 3"
+    await call_tool_with_llm(user_input)
 
 
 if __name__ == "__main__":
