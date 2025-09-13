@@ -2,19 +2,13 @@
 Run the FastMCP server from index.py over Streamable HTTP on /mcp.
 
 Usage:
-  uv run python test4/server_http.py
+  uv run python test5/server_http.py
 Then connect a client to http://127.0.0.1:8000/mcp
 """
 
+import asyncio
 from uvicorn import run as uvicorn_run
-import os
-import sys
-
-# Make sibling module importable when run as a script
-sys.path.insert(0, os.path.dirname(__file__))
-
-# Reuse the FastMCP instance defined in index.py
-from index import mcp  # noqa: F401
+from mcp_tools import mcp, init_db
 
 
 def main() -> None:
@@ -23,4 +17,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    asyncio.run(init_db())
     main()
