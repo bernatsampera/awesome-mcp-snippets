@@ -13,7 +13,8 @@ from mcp.server.fastmcp import FastMCP
 # Create an MCP server
 mcp = FastMCP("Samperalabs")
 
-DB_FILE = "content.db"
+
+DB_FILE = "src/content.db"
 
 
 async def init_db():
