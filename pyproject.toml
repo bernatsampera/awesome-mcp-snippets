@@ -8,6 +8,7 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "fastapi>=0.116.1",
     "mcp[cli]>=1.13.1",
+    "fastmcp>=0.1.0",
     "uvicorn",
     "httpx",
     "langchain-core",
