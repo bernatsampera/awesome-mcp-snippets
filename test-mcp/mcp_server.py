@@ -2,7 +2,7 @@
 Run the FastMCP server from index.py over Streamable HTTP on /mcp.
 
 Usage:
-  uv run python src/server_http.py
+  uv run python test-mcp/server_http.py
 Then connect a client to http://127.0.0.1:8000/mcp
 """
 
@@ -14,7 +14,7 @@ from mcp.server.fastmcp import FastMCP
 
 # Create an MCP server
 mcp = FastMCP("BlogMCP")
-DB_FILE = "src/content.db"
+DB_FILE = "test-mcp/content.db"
 
 
 # Initialize the database
