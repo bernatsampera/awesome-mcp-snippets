@@ -1,7 +1,6 @@
+start_test_mcp_server:
+	uv run test-mcp/mcp_server.py
 
-start_server:
-	uv run src/mcp_server.py
-
-start_client:
-	uv run src/mcp_ollama_client.py
+start_test_mcp_client:
+	uv run test-mcp/mcp_ollama_client.py
 
