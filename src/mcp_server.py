@@ -36,7 +36,7 @@ async def get_blog_posts(limit: Optional[int] = None) -> str:
     """Get blog posts with basic metadata.
 
     Args:
-        limit: Optional max number of posts to return.
+        limit: int, Optional max number of posts to return.
     """
     query = "SELECT id, title, content FROM posts "
     params: list = []
@@ -58,8 +58,8 @@ async def add_blog_post(title: str, content: str) -> str:
     """Add a blog post.
 
     Args:
-        title: The title of the blog post.
-        content: The content of the blog post.
+        title: str, The title of the blog post.
+        content: str, The content of the blog post.
     """
     async with aiosqlite.connect(DB_FILE) as db:
         await db.execute(
@@ -76,7 +76,7 @@ async def remove_blog_post(id: int) -> str:
     """Remove a blog post.
 
     Args:
-        id: The id of the blog post to remove.
+        id: int, The id of the blog post to remove.
     """
     async with aiosqlite.connect(DB_FILE) as db:
         await db.execute("DELETE FROM posts WHERE id = ?", (id,))
