@@ -11,31 +11,13 @@ llm = ChatOllama(model="llama3.1:latest", temperature=0, format="json")
 mcp_server_url = "http://127.0.0.1:8000/mcp"
 
 
-# Define the possible argument schemas.
-# NOTE: For a fully dynamic client, you might generate these Pydantic models
-# on-the-fly from the server's JSON schema, but for this refactoring,
-# we'll assume the client knows about these possible structures.
-class GetBlogPostsArgs(BaseModel):
-    limit: int
-
-
-class AddBlogPostArgs(BaseModel):
-    title: str
-    content: str
-
-
-class RemoveBlogPostArgs(BaseModel):
-    id: int
-
-
 # Main tool response schema that the LLM must adhere to.
 class ToolSelection(BaseModel):
     name: str
-    arguments: Union[GetBlogPostsArgs, AddBlogPostArgs, RemoveBlogPostArgs]
+    arguments: Union[Dict[str, Any]]
 
 
-# Create a structured LLM that is guaranteed to return a JSON object
-# matching the ToolSelection Pydantic model.
+# Create a structured LLM that is guaranteed to return a JSON object matching the ToolSelection Pydantic model.
 structured_llm = llm.with_structured_output(ToolSelection)
 
 
